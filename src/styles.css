@@ -1,0 +1,164 @@
+:root {
+  color-scheme: dark;
+  --bg: #070711;
+  --card: rgba(18, 20, 36, 0.86);
+  --card2: rgba(24, 28, 50, 0.94);
+  --line: rgba(255,255,255,0.1);
+  --text: #f5f7ff;
+  --muted: #9aa3b8;
+  --hot: #86f7d4;
+  --pink: #ff6bd6;
+  --yellow: #ffe082;
+  --bad: #ff6b7a;
+  --good: #59f0a8;
+  --shadow: 0 26px 80px rgba(0,0,0,0.45);
+}
+
+* { box-sizing: border-box; }
+html, body, #app { min-height: 100%; margin: 0; }
+body {
+  font-family: Inter, Pretendard, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 107, 214, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(134, 247, 212, 0.18), transparent 28%),
+    linear-gradient(135deg, #050510 0%, #0b1020 48%, #080711 100%);
+}
+
+button, input { font: inherit; }
+button {
+  border: 0;
+  color: #061015;
+  background: linear-gradient(135deg, var(--hot), #a8fff0);
+  font-weight: 900;
+  border-radius: 16px;
+  padding: 13px 18px;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(59, 255, 201, 0.14);
+}
+button:hover:not(:disabled) { transform: translateY(-1px); }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 13px 14px;
+  outline: none;
+}
+input:focus { border-color: rgba(134,247,212,.55); box-shadow: 0 0 0 4px rgba(134,247,212,.1); }
+a { color: inherit; text-decoration: none; }
+
+.shell { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0; }
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+.eyebrow { color: var(--hot); font-size: 12px; font-weight: 900; letter-spacing: .18em; }
+h1 { margin: 2px 0 4px; font-size: clamp(34px, 5vw, 68px); line-height: .95; letter-spacing: -0.06em; }
+p { margin: 0; color: var(--muted); }
+.nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.nav-btn, .small, .tab {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.nav-btn { padding: 10px 12px; border-radius: 999px; color: #dbe3ff; font-weight: 800; font-size: 13px; }
+.card {
+  background: linear-gradient(180deg, var(--card), rgba(12,14,26,.82));
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+.glow { position: relative; overflow: hidden; }
+.glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, rgba(134,247,212,.18), transparent 36%, rgba(255,107,214,.15));
+  pointer-events: none;
+}
+.glow > * { position: relative; }
+.gate {
+  display: grid;
+  grid-template-columns: 1.4fr .8fr;
+  gap: 28px;
+  padding: 34px;
+  min-height: 420px;
+  align-items: center;
+}
+.tag {
+  display: inline-flex;
+  width: fit-content;
+  color: #091016;
+  background: var(--yellow);
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.gate h2 { font-size: clamp(28px, 4vw, 52px); line-height: 1.02; letter-spacing: -0.05em; margin: 18px 0 14px; }
+.room-form { display: grid; gap: 10px; padding: 20px; background: rgba(255,255,255,.055); border: 1px solid var(--line); border-radius: 24px; }
+label { color: var(--muted); font-size: 13px; font-weight: 800; }
+.notice { margin-top: 14px; padding: 12px 14px; border: 1px solid rgba(134,247,212,.25); background: rgba(134,247,212,.08); border-radius: 16px; color: #dffff6; font-weight: 700; }
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.panel, .logs, .stage { padding: 20px; }
+.panel-title { font-size: 14px; font-weight: 950; color: var(--hot); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 14px; }
+.stat { display: flex; justify-content: space-between; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.stat span { color: var(--muted); }
+.stat strong { text-align: right; }
+.cash-box { margin: 16px 0; padding: 18px; border-radius: 22px; background: linear-gradient(135deg, rgba(134,247,212,.16), rgba(255,107,214,.10)); border: 1px solid rgba(134,247,212,.24); }
+.cash-box span { display: block; color: var(--muted); font-weight: 800; }
+.cash-box strong { display: block; margin-top: 4px; font-size: 28px; letter-spacing: -0.04em; }
+.plus { color: var(--good); }
+.minus { color: var(--bad); }
+.tip { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 14px; }
+.game-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab.active { color: #061015; background: linear-gradient(135deg, var(--hot), #d6fff4); }
+.betbar { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(4, auto); gap: 10px; align-items: end; padding: 14px; background: rgba(255,255,255,.045); border: 1px solid var(--line); border-radius: 22px; margin-bottom: 18px; }
+.small { padding: 12px 13px; }
+.game-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 18px; }
+.game-head h2 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.03em; }
+.game-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.mines-board { display: grid; grid-template-columns: repeat(5, minmax(48px, 1fr)); gap: 10px; }
+.mine-cell { aspect-ratio: 1; min-height: 74px; border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.045)); color: var(--text); border: 1px solid var(--line); font-size: 26px; box-shadow: inset 0 -12px 20px rgba(0,0,0,.16); }
+.mine-cell.safe { background: linear-gradient(135deg, rgba(89,240,168,.28), rgba(134,247,212,.12)); color: var(--good); }
+.mine-cell.bomb { background: linear-gradient(135deg, rgba(255,107,122,.38), rgba(255,107,214,.18)); color: white; }
+.mine-cell.reveal { background: rgba(255,255,255,.06); color: rgba(255,255,255,.62); }
+.card-game { display: grid; place-items: center; gap: 18px; padding: 26px; min-height: 390px; border-radius: 26px; background: rgba(255,255,255,.045); border: 1px solid var(--line); }
+.playing-card { width: min(220px, 70vw); aspect-ratio: .72; border-radius: 24px; display: grid; place-items: center; background: linear-gradient(160deg, #f7f8ff, #b8c2e8); color: #111626; font-size: 76px; font-weight: 950; box-shadow: 0 25px 60px rgba(0,0,0,.32); }
+.streak { font-weight: 950; color: var(--yellow); }
+.choice-row { display: flex; gap: 12px; }
+.choice-row button { min-width: 130px; }
+.slots { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 14px; padding: 26px; border-radius: 26px; background: rgba(255,255,255,.045); border: 1px solid var(--line); }
+.slots div { min-height: 170px; display: grid; place-items: center; border-radius: 24px; background: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.05)); border: 1px solid var(--line); font-size: clamp(54px, 9vw, 88px); }
+.log-list { display: grid; gap: 10px; max-height: 720px; overflow: auto; padding-right: 4px; }
+.log-item { padding: 13px; border: 1px solid var(--line); background: rgba(255,255,255,.045); border-radius: 16px; }
+.log-item div { font-weight: 800; line-height: 1.35; }
+.log-item span { display: block; margin-top: 6px; font-weight: 950; }
+.log-item small { color: var(--muted); }
+.empty { color: var(--muted); padding: 16px; border: 1px dashed var(--line); border-radius: 18px; }
+
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: 1fr; }
+  .panel, .logs { order: 2; }
+  .stage { order: 1; }
+}
+@media (max-width: 760px) {
+  .shell { width: min(100% - 20px, 1440px); padding: 14px 0; }
+  .topbar, .game-head { display: grid; }
+  .nav { justify-content: flex-start; }
+  .gate { grid-template-columns: 1fr; padding: 20px; }
+  .betbar { grid-template-columns: 1fr 1fr; }
+  .betbar > div { grid-column: 1 / -1; }
+  .mines-board { gap: 7px; }
+  .mine-cell { min-height: 54px; border-radius: 14px; }
+  .slots { grid-template-columns: repeat(3, 1fr); padding: 12px; }
+  .slots div { min-height: 110px; }
+}
