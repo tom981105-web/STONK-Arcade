@@ -17,6 +17,7 @@ import { sfx, isMuted, toggleMuted } from './sound.js';
 import { isLocalDev, showHomeGate } from './homeGate.js';
 import { playCoinFlip } from './games/coinflip.js';
 import { dropPlinko, PLINKO_ROWS, PLINKO_MULTIPLIERS } from './games/plinko.js';
+import { createBaccaratRound, BACCARAT_PAYOUT } from './games/baccarat.js';
 
 const reduceMotion = (() => {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
@@ -31,7 +32,8 @@ const games = [
   { id: 'plinko', icon: '🔵', name: '플링코', category: '운빨 게임', difficulty: '쉬움', risk: '높음', reward: '최대 9배', time: '4초' },
   { id: 'mines', icon: '💣', name: '폭탄 피하기', category: '선택형 게임', difficulty: '보통', risk: '조절 가능', reward: '복리 상승', time: '20초+' },
   { id: 'highlow', icon: '🃏', name: '하이로우', category: '선택형 게임', difficulty: '보통', risk: '연승형', reward: '연승 배율', time: '20초+' },
-  { id: 'blackjack', icon: '♠️', name: '블랙잭 Lite', category: '선택형 게임', difficulty: '전략', risk: '중간', reward: '1.82배', time: '20초' },
+  { id: 'baccarat', icon: '🎴', name: '바카라', category: 'VIP 테이블', difficulty: '전략', risk: '중간', reward: '플레이어 1.95 · 타이 8배', time: '12초' },
+  { id: 'blackjack', icon: '♠️', name: '블랙잭 Lite', category: 'VIP 테이블', difficulty: '전략', risk: '중간', reward: '1.82배', time: '20초' },
   { id: 'roulette', icon: '🌀', name: '룰렛', category: '운빨 게임', difficulty: '쉬움', risk: '높음', reward: '최대 12배', time: '5초' },
   { id: 'ladder', icon: '🪜', name: '사다리', category: '운빨 게임', difficulty: '쉬움', risk: '중간', reward: '최대 2.2배', time: '5초' }
 ];
@@ -57,6 +59,9 @@ const state = {
   plinkoResult: null,
   plinkoDropping: false,
   rouletteResult: null,
+  baccaratResult: null,
+  baccaratRevealing: false,
+  baccaratRevealStep: 0,
   ladderResult: null,
   ladderAnimating: false,
   logs: [],
@@ -240,6 +245,7 @@ function renderCurrentGame() {
   if (state.activeGame === 'roulette') return renderRoulette();
   if (state.activeGame === 'lottery') return renderLottery();
   if (state.activeGame === 'blackjack') return renderBlackjack();
+  if (state.activeGame === 'baccarat') return renderBaccarat();
   return renderLadder();
 }
 
@@ -363,6 +369,54 @@ function renderBlackjack() {
     </div>`;
 }
 
+function renderBaccarat() {
+  const r = state.baccaratResult;
+  const revealing = state.baccaratRevealing;
+  // 딜 순서: P1, B1, P2, B2, (P3), (B3)
+  const seq = [];
+  if (r) {
+    seq.push(['P', 0], ['B', 0], ['P', 1], ['B', 1]);
+    if (r.player[2]) seq.push(['P', 2]);
+    if (r.banker[2]) seq.push(['B', 2]);
+  }
+  const revealed = r ? (revealing ? state.baccaratRevealStep || 0 : seq.length) : 0;
+  const isVisible = (side, idx) => {
+    const pos = seq.findIndex(([s, i]) => s === side && i === idx);
+    return pos >= 0 && pos < revealed;
+  };
+  const fullyRevealed = r && revealed >= seq.length;
+  const cardsFor = (side, hand) => (hand || []).map((c, i) =>
+    isVisible(side, i)
+      ? `<div class="mini-card bacc-card in">${escapeHtml(c.label)}</div>`
+      : `<div class="mini-card back bacc-card">★</div>`).join('');
+  const choice = r?.choice;
+  const win = (side) => fullyRevealed && r.outcome === side;
+  const choiceBtn = (key, label, mult) =>
+    `<button data-baccarat="${key}" class="bacc-bet ${choice === key ? 'picked' : ''}" ${state.busy || revealing ? 'disabled' : ''}>${label}<em>${mult}배</em></button>`;
+  return `<div class="game-head"><div><h2>🎴 바카라</h2><p>플레이어·뱅커·타이에 베팅. 정통 3rd-card 룰. 플레이어 1.95배 / 뱅커 1.9배 / 타이 8배(타이 시 P·B는 원금 반환).</p></div></div>
+    <div class="baccarat-table ${revealing ? 'dealing' : ''}">
+      <div class="bacc-felt">
+        <div class="bacc-side bacc-player ${win('PLAYER') ? 'is-winner' : ''}">
+          <div class="bacc-label">PLAYER</div>
+          <div class="cards">${r ? cardsFor('P', r.player) : '<div class="mini-card empty-card">?</div><div class="mini-card empty-card">?</div>'}</div>
+          <div class="bacc-total">${fullyRevealed ? r.playerTotal : '–'}</div>
+        </div>
+        <div class="bacc-versus">VS</div>
+        <div class="bacc-side bacc-banker ${win('BANKER') ? 'is-winner' : ''}">
+          <div class="bacc-label">BANKER</div>
+          <div class="cards">${r ? cardsFor('B', r.banker) : '<div class="mini-card empty-card">?</div><div class="mini-card empty-card">?</div>'}</div>
+          <div class="bacc-total">${fullyRevealed ? r.bankerTotal : '–'}</div>
+        </div>
+      </div>
+      <div class="result-line">${fullyRevealed ? `${escapeHtml(r.label)}${r.natural ? ' · 내추럴' : ''}` : revealing ? '카드를 펼치는 중...' : '베팅처를 선택하면 딜이 시작됩니다.'}</div>
+      <div class="choice-row wrap bacc-bets">
+        ${choiceBtn('PLAYER', '플레이어', BACCARAT_PAYOUT.PLAYER)}
+        ${choiceBtn('TIE', '타이', BACCARAT_PAYOUT.TIE)}
+        ${choiceBtn('BANKER', '뱅커', BACCARAT_PAYOUT.BANKER)}
+      </div>
+    </div>`;
+}
+
 function renderLadder() {
   const r = state.ladderResult;
   return `<div class="game-head"><div><h2>🪜 사다리 게임</h2><p>시작 라인을 고르면 랜덤 사다리를 타고 보상 배율에 도착합니다.</p></div></div>
@@ -444,6 +498,7 @@ function bindGameEvents() {
   document.querySelectorAll('[data-dice]').forEach((button) => button.addEventListener('click', async () => { const bet = getBet(); if (!bet) return; const result = playDice(bet, button.dataset.dice); state.diceResult = result; await settle('dice', result, `주사위 ${result.d1}+${result.d2}=${result.sum} · ${result.label}${result.multiplier ? ` · ${result.multiplier}배` : ''}`); }));
   document.querySelectorAll('[data-roulette]').forEach((button) => button.addEventListener('click', async () => { const bet = getBet(); if (!bet) return; const result = playRoulette(bet, button.dataset.roulette); state.rouletteResult = result; await settle('roulette', result, `룰렛 ${result.number} · ${result.label}${result.multiplier ? ` · ${result.multiplier}배` : ''}`); }));
 
+  document.querySelectorAll('[data-baccarat]').forEach((button) => button.addEventListener('click', () => playBaccaratGame(button.dataset.baccarat)));
   document.querySelectorAll('[data-coin]').forEach((button) => button.addEventListener('click', () => playCoinFlipGame(button.dataset.coin)));
   document.querySelector('#dropPlinko')?.addEventListener('click', playPlinkoGame);
 
@@ -478,6 +533,29 @@ async function playCoinFlipGame(choice) {
   state.coinResult = result;
   state.coinFlipping = false;
   await settle('coinflip', result, `동전 ${result.sideLabel} · ${result.label}`);
+}
+
+async function playBaccaratGame(choice) {
+  if (state.baccaratRevealing || state.busy) return;
+  const bet = getBet();
+  if (!bet) return;
+  const result = createBaccaratRound(bet, choice);
+  const seqLen = 4 + (result.player[2] ? 1 : 0) + (result.banker[2] ? 1 : 0);
+  state.baccaratResult = result;
+  state.baccaratRevealing = true;
+  state.baccaratRevealStep = 0;
+  state.notice = '딜러가 카드를 나눕니다...';
+  render();
+  sfx.card();
+  for (let i = 1; i <= seqLen; i += 1) {
+    await sleep(reduceMotion ? 60 : 360);
+    state.baccaratRevealStep = i;
+    sfx.reelStop();
+    render();
+  }
+  await sleep(reduceMotion ? 80 : 420);
+  state.baccaratRevealing = false;
+  await settle('baccarat', result, result.resultText);
 }
 
 async function playPlinkoGame() {
@@ -671,5 +749,5 @@ function floatProfit(profit) {
   anchor.appendChild(el);
   el.addEventListener('animationend', () => el.remove(), { once: true });
 }
-function anyAnimation() { return state.slotSpinning || state.lotteryScratching || state.ladderAnimating || state.coinFlipping || state.plinkoDropping; }
+function anyAnimation() { return state.slotSpinning || state.lotteryScratching || state.ladderAnimating || state.coinFlipping || state.plinkoDropping || state.baccaratRevealing; }
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
