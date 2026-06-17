@@ -19,11 +19,11 @@ FIREBASE: `))}restoreState_(){this.tryAuth(),this.tryAppCheck();for(let e of thi
           <p>Battle/Board와 같은 시장 터미널 결로 정리한 Arcade UI. 손맛은 올리고 평균 수익률은 낮췄습니다.</p>
         </div>
         <nav class="nav">
-          ${m_(`Home`,Th.home)}
-          ${m_(`Battle`,Th.battle)}
-          ${m_(`Market Pulse`,Th.pulse)}
-          ${m_(`Wiki`,Th.wiki)}
-          ${m_(`Gacha`,Th.gacha)}
+          ${m_(`홈`,Th.home)}
+          ${m_(`주식시장`,Th.battle)}
+          ${m_(`주식소식`,Th.pulse)}
+          ${m_(`주식정보`,Th.wiki)}
+          ${m_(`가챠`,Th.gacha)}
           <button class="sound-toggle ${Lg()?`is-muted`:``}" type="button" data-sound-toggle aria-label="소리 켜기/끄기" title="소리 ${Lg()?`꺼짐`:`켜짐`}">${Lg()?`🔇`:`🔊`}</button>
         </nav>
       </header>
