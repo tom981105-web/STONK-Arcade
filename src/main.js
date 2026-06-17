@@ -147,11 +147,11 @@ function render() {
           <p>Battle/Board와 같은 시장 터미널 결로 정리한 Arcade UI. 손맛은 올리고 평균 수익률은 낮췄습니다.</p>
         </div>
         <nav class="nav">
-          ${navLink('Home', ROUTES.home)}
-          ${navLink('Battle', ROUTES.battle)}
-          ${navLink('Market Pulse', ROUTES.pulse)}
-          ${navLink('Wiki', ROUTES.wiki)}
-          ${navLink('Gacha', ROUTES.gacha)}
+          ${navLink('홈', ROUTES.home)}
+          ${navLink('주식시장', ROUTES.battle)}
+          ${navLink('주식소식', ROUTES.pulse)}
+          ${navLink('주식정보', ROUTES.wiki)}
+          ${navLink('가챠', ROUTES.gacha)}
           <button class="sound-toggle ${isMuted() ? 'is-muted' : ''}" type="button" data-sound-toggle aria-label="소리 켜기/끄기" title="소리 ${isMuted() ? '꺼짐' : '켜짐'}">${isMuted() ? '🔇' : '🔊'}</button>
         </nav>
       </header>
