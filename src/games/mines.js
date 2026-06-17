@@ -3,23 +3,26 @@ import { shuffle } from '../random.js';
 const SIZE = 25;
 const BOMBS = 3;
 
+// v3.0: 전체 기대값을 낮춰 돈이 계속 불어나는 문제를 완화했다.
 export const minesMultipliers = {
-  1: 1.12,
-  2: 1.28,
-  3: 1.45,
-  4: 1.65,
-  5: 1.9,
-  6: 2.2,
-  7: 2.55,
-  8: 2.95,
-  9: 3.4,
-  10: 4.0
+  1: 1.05,
+  2: 1.13,
+  3: 1.23,
+  4: 1.35,
+  5: 1.50,
+  6: 1.68,
+  7: 1.90,
+  8: 2.18,
+  9: 2.50,
+  10: 2.90,
+  11: 3.35,
+  12: 3.85
 };
 
 export function multiplierForSafeCount(count) {
   if (count <= 0) return 1;
   if (minesMultipliers[count]) return minesMultipliers[count];
-  return Number((4 + (count - 10) * 0.72 + Math.pow(count - 10, 1.18) * 0.08).toFixed(2));
+  return Number((3.85 + (count - 12) * 0.44 + Math.pow(count - 12, 1.12) * 0.055).toFixed(2));
 }
 
 export function createMinesGame(bet) {
@@ -51,7 +54,8 @@ export function openCell(game, index) {
       profit: -game.bet,
       payout: 0,
       multiplier: 0,
-      safeCount: game.safeCount
+      safeCount: game.safeCount,
+      outcome: 'loss'
     };
   }
 
@@ -62,7 +66,8 @@ export function openCell(game, index) {
     profit: Math.floor(game.bet * multiplier) - game.bet,
     payout: Math.floor(game.bet * multiplier),
     multiplier,
-    safeCount: game.safeCount
+    safeCount: game.safeCount,
+    outcome: 'win'
   };
 }
 
@@ -77,6 +82,7 @@ export function cashoutMines(game) {
     payout,
     profit,
     multiplier,
-    safeCount: game.safeCount
+    safeCount: game.safeCount,
+    outcome: profit > 0 ? 'win' : 'neutral'
   };
 }

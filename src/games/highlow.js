@@ -9,15 +9,16 @@ export function drawCard() {
 
 export function highlowMultiplier(streak) {
   const table = {
-    1: 1.25,
-    2: 1.55,
-    3: 1.9,
-    4: 2.4,
-    5: 3.1,
-    6: 4.0
+    1: 1.12,
+    2: 1.34,
+    3: 1.66,
+    4: 2.08,
+    5: 2.65,
+    6: 3.35,
+    7: 4.25
   };
   if (table[streak]) return table[streak];
-  return Number((4 + (streak - 6) * 1.1 + Math.pow(streak - 6, 1.22) * 0.18).toFixed(2));
+  return Number((4.25 + (streak - 7) * 0.72 + Math.pow(streak - 7, 1.16) * 0.10).toFixed(2));
 }
 
 export function createHighlowGame(bet) {
@@ -51,7 +52,8 @@ export function guessHighlow(game, choice) {
       profit: -game.bet,
       payout: 0,
       streak: game.streak,
-      multiplier: 0
+      multiplier: 0,
+      outcome: 'loss'
     };
   }
 
@@ -64,7 +66,8 @@ export function guessHighlow(game, choice) {
     profit: Math.floor(game.bet * multiplier) - game.bet,
     payout: Math.floor(game.bet * multiplier),
     streak: game.streak,
-    multiplier
+    multiplier,
+    outcome: 'win'
   };
 }
 
@@ -79,6 +82,7 @@ export function cashoutHighlow(game) {
     payout,
     profit,
     multiplier,
-    streak: game.streak
+    streak: game.streak,
+    outcome: profit > 0 ? 'win' : 'neutral'
   };
 }
