@@ -45,7 +45,7 @@ const games = [
 ];
 
 const state = {
-  roomCode: getUrlRoomCode() || getStoredRoomCode(STORAGE_KEYS),
+  roomCode: getUrlRoomCode() || getStoredRoomCode(STORAGE_KEYS) || 'MAIN', // 단일 방 운영: 항상 고정 방
   user: null,
   player: null,
   stats: { plays: 0, profit: 0, wins: 0, losses: 0 },

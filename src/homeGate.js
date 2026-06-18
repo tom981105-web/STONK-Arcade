@@ -30,7 +30,7 @@ export function getEntryRoomCode() {
       if (v) return v;
     }
   } catch (e) {}
-  return "";
+  return "MAIN"; // 단일 방 운영: 방 코드 없으면 고정 방
 }
 
 export function isHomeSessionReady() {
