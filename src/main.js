@@ -171,15 +171,11 @@ function renderGate() {
   return `
     <main class="gate card glow">
       <div class="gate-copy">
-        <span class="tag">방 코드 입장</span>
-        <h2>Battle에서 쓰던 방 코드로 Arcade에 들어가세요.</h2>
-        <p>같은 방의 <b>players/{uid}/cash</b>와 연결됩니다. 결과가 확정될 때만 Firebase에 정산합니다.</p>
+        <span class="tag">입장</span>
+        <h2>STONK Home에서 로그인 후 Arcade에 입장하세요.</h2>
+        <p>단일 시장으로 운영됩니다. 방 코드를 입력할 필요가 없습니다. 로그인하면 자동으로 연결됩니다.</p>
       </div>
-      <form id="roomForm" class="room-form">
-        <label>방 코드</label>
-        <input id="roomInput" value="${escapeHtml(state.roomCode)}" placeholder="예: ABC123" autocomplete="off" />
-        <button ${state.busy ? 'disabled' : ''}>Arcade 입장</button>
-      </form>
+      <a class="nav-btn primary" href="../STONK-Home/index.html">STONK Home으로 이동</a>
       ${state.notice ? `<div class="notice">${escapeHtml(state.notice)}</div>` : ''}
     </main>`;
 }
@@ -189,7 +185,6 @@ function renderArcade() {
     <main class="layout">
       <aside class="panel card">
         <div class="panel-title">내 정보</div>
-        <div class="stat"><span>방 코드</span><strong>${escapeHtml(state.roomCode)}</strong></div>
         <div class="stat"><span>UID</span><strong>${shortUid(state.user?.uid)}</strong></div>
         <div class="cash-box"><span>보유금</span><strong>${formatWon(state.player.cash)}</strong></div>
         <div class="stat"><span>누적 손익</span><strong class="${state.stats.profit >= 0 ? 'plus' : 'minus'}">${state.stats.profit >= 0 ? '+' : ''}${formatWon(state.stats.profit)}</strong></div>
