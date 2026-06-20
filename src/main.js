@@ -1,6 +1,6 @@
 import './styles.css';
 import { isConfigured, ensureAnonymousUser, getCurrentUserOnce } from './firebase.js';
-import { ROUTES, STORAGE_KEYS, BET, APP_VERSION } from './config.js';
+import { ROUTES, STORAGE_KEYS, BET, APP_VERSION, ADMIN_UID } from './config.js';
 import { addArcadeLog, loadRecentLogs } from './logs.js';
 import { applyProfit, ensurePlayerExists, loadPlayer, loadStats, updateStats } from './wallet.js';
 import { clampNumber, escapeHtml, formatWon, getStoredRoomCode, getUrlRoomCode, normalizeRoomCode, saveRoomCode, shortUid } from './utils.js';
@@ -152,6 +152,7 @@ function render() {
           ${navLink('주식소식', ROUTES.pulse)}
           ${navLink('주식정보', ROUTES.wiki)}
           ${navLink('가챠', ROUTES.gacha)}
+          ${state.user && state.user.uid === ADMIN_UID ? navLink('관리자 페이지', ROUTES.admin) : ''}
           <button class="sound-toggle ${isMuted() ? 'is-muted' : ''}" type="button" data-sound-toggle aria-label="소리 켜기/끄기" title="소리 ${isMuted() ? '꺼짐' : '켜짐'}">${isMuted() ? '🔇' : '🔊'}</button>
         </nav>
       </header>

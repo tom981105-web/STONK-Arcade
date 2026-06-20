@@ -7,8 +7,11 @@ export const ROUTES = {
   battle: '../STONK-Battle/index.html',
   pulse: '../STONK-Board/index.html',
   wiki: '../STONK-Wiki/index.html',
-  gacha: '../STONK-Gacha/index.html'
+  gacha: '../STONK-Gacha/index.html',
+  admin: '../STONK-Admin/market-admin.html'
 };
+// 관리자 UID (이 계정에게만 관리자 페이지 버튼 노출)
+export const ADMIN_UID = 'yaV8N60yIiUggaWNpNF2VhkCwxb2';
 
 export const WALLET_PATH = (roomCode, uid) => `rooms/${roomCode}/players/${uid}/cash`;
 export const PLAYER_PATH = (roomCode, uid) => `rooms/${roomCode}/players/${uid}`;
