@@ -1,6 +1,29 @@
-import { get, ref, runTransaction, update } from 'firebase/database';
+import { get, push, ref, runTransaction, update } from 'firebase/database';
 import { getFirebase } from './firebase.js';
 import { PLAYER_PATH, STATS_PATH, WALLET_PATH } from './config.js';
+
+// v2.5: Arcade 손실 완화 보험 실연동.
+// 손실 100만원 이상 + 활성 'arcade' 보험이 있으면 1회에 한해 손실의 10%를 환급한다.
+// 게임 결과 자체는 바꾸지 않고, 정산 후 추가 환급만 처리한다. 실패해도 게임이 멈추지 않도록 방어.
+export async function claimArcadeLossInsurance(roomCode, uid, lossAmount) {
+  try {
+    const loss = Math.trunc(Number(lossAmount) || 0);
+    if (loss < 1000000) return 0;
+    const { db } = getFirebase();
+    const now = Date.now();
+    const bankSnap = await get(ref(db, `rooms/${roomCode}/bank/${uid}`));
+    const inss = (bankSnap.val() || {}).insurances || {};
+    const entry = Object.entries(inss).find(([, i]) => i && i.type === 'arcade' && i.status === 'active' && !i.usedAt && Number(i.expiresAt || 0) > now);
+    if (!entry) return 0;
+    const [insId] = entry;
+    const refund = Math.max(1, Math.floor(loss * 0.10));
+    await runTransaction(ref(db, WALLET_PATH(roomCode, uid)), (c) => Math.trunc(Number(c || 0)) + refund);
+    await update(ref(db, `rooms/${roomCode}/bank/${uid}/insurances/${insId}`), { status: 'used', usedAt: now });
+    await push(ref(db, `rooms/${roomCode}/bank/${uid}/tx`), { type: 'insurance_used', title: 'Arcade 손실 완화 보험 적용', amount: refund, beforeCash: 0, afterCash: 0, memo: `손실액 ${loss.toLocaleString('ko-KR')}원 중 10% 환급`, createdAt: now });
+    await push(ref(db, `rooms/${roomCode}/bank/${uid}/messages`), { type: 'insurance', title: 'Arcade 보험 적용 완료', body: `손실액 ${loss.toLocaleString('ko-KR')}원 중 ${refund.toLocaleString('ko-KR')}원이 환급되었습니다.`, amount: refund, relatedId: 'insused-' + insId, read: false, actionLabel: '', actionUrl: '', createdAt: now });
+    return refund;
+  } catch (e) { console.warn('[arcade] 보험 환급 처리 실패:', e); return -1; } // -1 = 확인 실패
+}
 
 // v2.0: 은행 대출 잔액 1회 조회(표시 전용). 아케이드 정산/확률에는 영향 없음.
 export async function loadBankLoan(roomCode, uid) {

@@ -2,7 +2,7 @@ import './styles.css';
 import { isConfigured, ensureAnonymousUser, getCurrentUserOnce } from './firebase.js';
 import { ROUTES, STORAGE_KEYS, BET, APP_VERSION, ADMIN_UID } from './config.js';
 import { addArcadeLog, loadRecentLogs } from './logs.js';
-import { applyProfit, ensurePlayerExists, loadBankLoan, loadPlayer, loadStats, updateStats } from './wallet.js';
+import { applyProfit, claimArcadeLossInsurance, ensurePlayerExists, loadBankLoan, loadPlayer, loadStats, updateStats } from './wallet.js';
 import { clampNumber, escapeHtml, formatWon, getStoredRoomCode, getUrlRoomCode, normalizeRoomCode, saveRoomCode, shortUid } from './utils.js';
 import { randomInt } from './random.js';
 import { cashoutMines, createMinesGame, openCell, multiplierForSafeCount } from './games/mines.js';
@@ -959,6 +959,12 @@ async function settle(game, result, resultText) {
     state.stats = updateLocalStats(state.stats, profit);
     state.logs = [newLog, ...state.logs].slice(0, 20);
     state.notice = `${resultText} / 손익 ${profit >= 0 ? '+' : ''}${formatWon(profit)}`;
+    // v2.5: 손실 시 Arcade 손실 완화 보험 자동 적용(게임 결과는 그대로, 환급만 추가)
+    if (profit < 0) {
+      const refund = await claimArcadeLossInsurance(state.roomCode, state.user.uid, -profit);
+      if (refund > 0) { state.player.cash += refund; state.notice += ` · 🛡️ 보험 적용: ${formatWon(refund)} 환급`; }
+      else if (refund < 0) { state.notice += ' · 보험 적용 확인 실패'; }
+    }
     const jackpot = bet > 0 && payout >= bet * 5;
     flashResult(jackpot ? 'jackpot' : profit > 0 ? 'win' : profit < 0 ? 'loss' : 'neutral');
     if (jackpot) sfx.jackpot();
