@@ -152,6 +152,7 @@ function render() {
           ${navLink('주식소식', ROUTES.pulse)}
           ${navLink('주식정보', ROUTES.wiki)}
           ${navLink('가챠', ROUTES.gacha)}
+          ${navLink('은행', ROUTES.bank)}
           ${state.user && state.user.uid === ADMIN_UID ? navLink('관리자 페이지', ROUTES.admin) : ''}
           <button class="sound-toggle ${isMuted() ? 'is-muted' : ''}" type="button" data-sound-toggle aria-label="소리 켜기/끄기" title="소리 ${isMuted() ? '꺼짐' : '켜짐'}">${isMuted() ? '🔇' : '🔊'}</button>
         </nav>

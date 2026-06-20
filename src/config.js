@@ -8,6 +8,7 @@ export const ROUTES = {
   pulse: '../STONK-Board/index.html',
   wiki: '../STONK-Wiki/index.html',
   gacha: '../STONK-Gacha/index.html',
+  bank: '../STONK-Bank/index.html',
   admin: '../STONK-Admin/market-admin.html'
 };
 // 관리자 UID (이 계정에게만 관리자 페이지 버튼 노출)
