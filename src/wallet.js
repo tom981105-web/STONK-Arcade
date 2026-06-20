@@ -2,6 +2,16 @@ import { get, ref, runTransaction, update } from 'firebase/database';
 import { getFirebase } from './firebase.js';
 import { PLAYER_PATH, STATS_PATH, WALLET_PATH } from './config.js';
 
+// v2.0: 은행 대출 잔액 1회 조회(표시 전용). 아케이드 정산/확률에는 영향 없음.
+export async function loadBankLoan(roomCode, uid) {
+  try {
+    const { db } = getFirebase();
+    const snap = await get(ref(db, `rooms/${roomCode}/bank/${uid}`));
+    const b = snap.val() || {};
+    return Math.max(0, Math.trunc(Number(b.loanPrincipal || 0) + Number(b.loanInterest || 0)));
+  } catch (_) { return 0; }
+}
+
 export async function loadPlayer(roomCode, uid) {
   const { db } = getFirebase();
   const snap = await get(ref(db, PLAYER_PATH(roomCode, uid)));

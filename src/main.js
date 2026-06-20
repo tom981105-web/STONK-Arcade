@@ -2,7 +2,7 @@ import './styles.css';
 import { isConfigured, ensureAnonymousUser, getCurrentUserOnce } from './firebase.js';
 import { ROUTES, STORAGE_KEYS, BET, APP_VERSION, ADMIN_UID } from './config.js';
 import { addArcadeLog, loadRecentLogs } from './logs.js';
-import { applyProfit, ensurePlayerExists, loadPlayer, loadStats, updateStats } from './wallet.js';
+import { applyProfit, ensurePlayerExists, loadBankLoan, loadPlayer, loadStats, updateStats } from './wallet.js';
 import { clampNumber, escapeHtml, formatWon, getStoredRoomCode, getUrlRoomCode, normalizeRoomCode, saveRoomCode, shortUid } from './utils.js';
 import { randomInt } from './random.js';
 import { cashoutMines, createMinesGame, openCell, multiplierForSafeCount } from './games/mines.js';
@@ -125,6 +125,7 @@ async function boot(roomCode) {
     }
     await ensurePlayerExists(state.roomCode, state.user.uid);
     state.player = await loadPlayer(state.roomCode, state.user.uid);
+    state.bankLoan = await loadBankLoan(state.roomCode, state.user.uid); // v2.0: 고액 베팅 경고용(1회 조회)
     state.stats = await loadStats(state.roomCode, state.user.uid);
     state.logs = await loadRecentLogs(state.roomCode, 20);
     state.notice = '입장 완료. v3.1.1은 입장 1회 로드 + 게임 정산 1회 쓰기 방식으로 Firebase 사용량을 줄입니다.';
@@ -588,7 +589,14 @@ function bindGameEvents() {
     const input = document.querySelector('#betInput');
     const max = getMaxBet();
     const value = button.dataset.bet === 'max' ? max : button.dataset.bet === 'ratio10' ? Math.floor((state.player?.cash || 0) * 0.1) : Number(button.dataset.bet);
-    input.value = clampNumber(value, BET.min, max);
+    const bet = clampNumber(value, BET.min, max);
+    input.value = bet;
+    // v2.0: 대출 보유 + 현금 30% 이상 베팅이면 경고(차단하지 않음)
+    const cash = state.player?.cash || 0;
+    if ((state.bankLoan || 0) > 0 && cash > 0 && bet >= cash * 0.3) {
+      state.notice = `⚠️ 대출 잔액(${formatWon(state.bankLoan)})이 있는 상태에서 큰 금액을 베팅하려고 합니다. 무리한 베팅은 신용에 영향을 줄 수 있습니다.`;
+      render();
+    }
   }));
 
   document.querySelector('#startMines')?.addEventListener('click', () => { const bet = getBet(); if (!bet) return; state.mines = createMinesGame(bet); state.notice = '폭탄 위치가 새 랜덤으로 생성되었습니다.'; render(); });
