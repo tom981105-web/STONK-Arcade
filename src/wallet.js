@@ -35,6 +35,35 @@ export async function loadBankLoan(roomCode, uid) {
   } catch (_) { return 0; }
 }
 
+// v2.9: 카드 상태 조회(결제 옵션 표시용). 실패 시 null → 카드 옵션 숨김.
+export async function loadCardStatus(roomCode, uid) {
+  try {
+    const { db } = getFirebase();
+    const snap = await get(ref(db, `rooms/${roomCode}/bank/${uid}/card`));
+    const c = snap.val() || {};
+    const limit = Math.trunc(Number(c.cardLimit) || 0), used = Math.trunc(Number(c.usedAmount) || 0);
+    return { enabled: !!c.enabled, suspended: !!c.suspended, overdue: !!c.overdue, tier: c.cardTier || "", limit, used, remaining: Math.max(0, limit - used) };
+  } catch (_) { return null; }
+}
+// v2.9: 카드 결제(usedAmount 누적, 즉시 현금 차감 없음). 반환: 결제액(성공) / -1 정지·미발급 / -2 한도초과 / 0 무효
+export async function chargeCard(roomCode, uid, amount, label) {
+  try {
+    amount = Math.max(0, Math.trunc(Number(amount) || 0));
+    if (amount <= 0) return 0;
+    const { db } = getFirebase();
+    const now = Date.now();
+    const c = (await get(ref(db, `rooms/${roomCode}/bank/${uid}/card`))).val() || {};
+    if (!c.enabled || c.suspended) return -1;
+    const limit = Math.trunc(Number(c.cardLimit) || 0), used = Math.trunc(Number(c.usedAmount) || 0);
+    if (used + amount > limit) return -2;
+    const dueAt = Number(c.dueAt) > 0 ? Number(c.dueAt) : now + 24 * 3600 * 1000;
+    await update(ref(db, `rooms/${roomCode}/bank/${uid}/card`), { usedAmount: used + amount, dueAt, updatedAt: now });
+    await push(ref(db, `rooms/${roomCode}/bank/${uid}/tx`), { type: "card_use", title: label || "카드 결제", amount: -amount, beforeCash: 0, afterCash: 0, memo: "게임머니 카드 결제(청구 예정)", createdAt: now });
+    await push(ref(db, `rooms/${roomCode}/bank/${uid}/messages`), { type: "card", title: "STONK Card 결제", body: `${label || "카드 결제"} ${amount.toLocaleString("ko-KR")}원이 카드로 결제되었습니다(청구 예정).`, amount: -amount, relatedId: "", read: false, actionLabel: "", actionUrl: "", createdAt: now });
+    return amount;
+  } catch (e) { console.warn("[arcade] 카드 결제 실패:", e); return -1; }
+}
+
 export async function loadPlayer(roomCode, uid) {
   const { db } = getFirebase();
   const snap = await get(ref(db, PLAYER_PATH(roomCode, uid)));

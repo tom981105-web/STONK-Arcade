@@ -543,3 +543,12 @@ label { color: var(--muted); font-size: 13px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* v2.9: 결제수단(카드) 토글 */
+.pay-method { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+.pay-method .pm-label { color: #8b97a8; font-weight: 700; }
+.pm-opt { padding: 6px 14px; border-radius: 999px; border: 1px solid #2a3242; background: #1b1e27; color: #cfd6e2; font-weight: 800; cursor: pointer; font-size: 13px; }
+.pm-opt.on { background: linear-gradient(135deg,#e8c87a,#b9923f); color: #1a140a; border-color: transparent; }
+.pm-opt.off { opacity: .5; cursor: not-allowed; }
+.pay-method small { width: 100%; color: #8b97a8; font-size: 12px; }
+.pay-method small i { color: #e8c87a; font-style: normal; }

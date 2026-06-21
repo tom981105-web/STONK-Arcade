@@ -2,7 +2,7 @@ import './styles.css';
 import { isConfigured, ensureAnonymousUser, getCurrentUserOnce } from './firebase.js';
 import { ROUTES, STORAGE_KEYS, BET, APP_VERSION, ADMIN_UID } from './config.js';
 import { addArcadeLog, loadRecentLogs } from './logs.js';
-import { applyProfit, claimArcadeLossInsurance, ensurePlayerExists, loadBankLoan, loadPlayer, loadStats, updateStats } from './wallet.js';
+import { applyProfit, chargeCard, claimArcadeLossInsurance, ensurePlayerExists, loadBankLoan, loadCardStatus, loadPlayer, loadStats, updateStats } from './wallet.js';
 import { clampNumber, escapeHtml, formatWon, getStoredRoomCode, getUrlRoomCode, normalizeRoomCode, saveRoomCode, shortUid } from './utils.js';
 import { randomInt } from './random.js';
 import { cashoutMines, createMinesGame, openCell, multiplierForSafeCount } from './games/mines.js';
@@ -48,6 +48,9 @@ const state = {
   roomCode: getUrlRoomCode() || getStoredRoomCode(STORAGE_KEYS) || 'MAIN', // 단일 방 운영: 항상 고정 방
   user: null,
   player: null,
+  card: null,          // v2.9: 카드 상태
+  payMethod: 'cash',   // v2.9: cash | card
+
   stats: { plays: 0, profit: 0, wins: 0, losses: 0 },
   activeGame: 'slots',
   mines: null,
@@ -126,6 +129,7 @@ async function boot(roomCode) {
     await ensurePlayerExists(state.roomCode, state.user.uid);
     state.player = await loadPlayer(state.roomCode, state.user.uid);
     state.bankLoan = await loadBankLoan(state.roomCode, state.user.uid); // v2.0: 고액 베팅 경고용(1회 조회)
+    state.card = await loadCardStatus(state.roomCode, state.user.uid);   // v2.9: 카드 베팅 옵션(1회 조회)
     state.stats = await loadStats(state.roomCode, state.user.uid);
     state.logs = await loadRecentLogs(state.roomCode, 20);
     state.notice = '입장 완료. v3.1.1은 입장 1회 로드 + 게임 정산 1회 쓰기 방식으로 Firebase 사용량을 줄입니다.';
@@ -249,7 +253,22 @@ function renderBetBar() {
       <button class="small" data-bet="5000000" ${anyAnimation() ? 'disabled' : ''}>500만</button>
       <button class="small" data-bet="ratio10" ${anyAnimation() ? 'disabled' : ''}>10%</button>
       <button class="small" data-bet="max" ${anyAnimation() ? 'disabled' : ''}>최대</button>
-    </div>`;
+    </div>
+    ${cardPayUI()}`;
+}
+
+// v2.9: 결제수단 토글(현금/카드). 카드 발급+정상일 때만 노출.
+function cardPayUI() {
+  const c = state.card;
+  if (!c || !c.enabled) return '';
+  const blocked = c.suspended;
+  const risk = state.bankLoan > 0 && state.payMethod === 'card' ? ' · ⚠️ 대출+카드 주의' : '';
+  return `<div class="pay-method">
+    <span class="pm-label">결제수단</span>
+    <button class="pm-opt ${state.payMethod === 'cash' ? 'on' : ''}" type="button" data-pay="cash">현금</button>
+    <button class="pm-opt ${state.payMethod === 'card' ? 'on' : ''} ${blocked ? 'off' : ''}" type="button" data-pay="card" ${blocked ? 'disabled' : ''}>STONK Card</button>
+    <small>${blocked ? '카드 정지' : `남은 한도 ${formatWon(c.remaining)}${c.overdue ? ' · 미납' : ''}`}${risk} · 카드 베팅은 청구 예정 <i>게임머니 신용결제</i></small>
+  </div>`;
 }
 
 function renderCurrentGame() {
@@ -598,6 +617,7 @@ function bindGameEvents() {
       render();
     }
   }));
+  document.querySelectorAll('[data-pay]').forEach((button) => button.addEventListener('click', () => { state.payMethod = button.dataset.pay; render(); }));
 
   document.querySelector('#startMines')?.addEventListener('click', () => { const bet = getBet(); if (!bet) return; state.mines = createMinesGame(bet); state.notice = '폭탄 위치가 새 랜덤으로 생성되었습니다.'; render(); });
   document.querySelectorAll('[data-cell]').forEach((cell) => cell.addEventListener('click', async () => {
@@ -951,14 +971,22 @@ async function settle(game, result, resultText) {
     const profit = Math.trunc(Number(result.profit || 0));
     const bet = Math.trunc(Number(result.bet || document.querySelector('#betInput')?.value || 0));
     const payout = Math.trunc(Number(result.payout || 0));
-    const nextCash = await applyProfit(state.roomCode, state.user.uid, profit, state.player.cash);
+    // v2.9: 카드 베팅이면 베팅액을 카드로 결제(현금 미차감)하고 당첨금만 현금 지급. 실패 시 현금 베팅으로 진행.
+    let cardBet = false;
+    if (state.payMethod === 'card' && bet > 0 && state.card && state.card.enabled && !state.card.suspended) {
+      const charged = await chargeCard(state.roomCode, state.user.uid, bet, 'Arcade 베팅');
+      if (charged > 0) { cardBet = true; state.card.used += charged; state.card.remaining = Math.max(0, state.card.remaining - charged); }
+      else { state.notice = (charged === -2 ? '카드 한도 초과 — 현금으로 진행합니다.' : '카드 사용 불가 — 현금으로 진행합니다.'); }
+    }
+    const cashDelta = cardBet ? payout : profit;
+    const nextCash = await applyProfit(state.roomCode, state.user.uid, cashDelta, state.player.cash);
     await updateStats(state.roomCode, state.user.uid, profit);
     const newLog = await addArcadeLog(state.roomCode, { uid: state.user.uid, nickname: state.player.nickname, game, bet, payout, profit, resultText });
 
     state.player.cash = nextCash;
     state.stats = updateLocalStats(state.stats, profit);
     state.logs = [newLog, ...state.logs].slice(0, 20);
-    state.notice = `${resultText} / 손익 ${profit >= 0 ? '+' : ''}${formatWon(profit)}`;
+    state.notice = `${resultText} / 손익 ${profit >= 0 ? '+' : ''}${formatWon(profit)}${cardBet ? ` · 💳 STONK Card 베팅 ${formatWon(bet)}(청구 예정)` : ''}`;
     // v2.5: 손실 시 Arcade 손실 완화 보험 자동 적용(게임 결과는 그대로, 환급만 추가)
     if (profit < 0) {
       const refund = await claimArcadeLossInsurance(state.roomCode, state.user.uid, -profit);
