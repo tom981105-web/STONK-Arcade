@@ -267,7 +267,7 @@ function cardPayUI() {
     <span class="pm-label">결제수단</span>
     <button class="pm-opt ${state.payMethod === 'cash' ? 'on' : ''}" type="button" data-pay="cash">현금</button>
     <button class="pm-opt ${state.payMethod === 'card' ? 'on' : ''} ${blocked ? 'off' : ''}" type="button" data-pay="card" ${blocked ? 'disabled' : ''}>STONK Card</button>
-    <small>${blocked ? '카드 정지' : `남은 한도 ${formatWon(c.remaining)}${c.overdue ? ' · 미납' : ''}`}${risk} · 카드 베팅은 청구 예정 <i>게임머니 신용결제</i></small>
+    <small>${blocked ? '카드 정지' : `사용 ${formatWon(c.used)} · 남은 한도 ${formatWon(c.remaining)}${c.overdue ? ' · ⚠️미납' : ''}`}${risk} · 카드 베팅액은 <b>청구 예정</b> <i>게임머니 신용결제</i></small>
   </div>`;
 }
 
@@ -952,15 +952,24 @@ async function playHighlow(choice) {
 }
 
 function getMaxBet() {
-  return Math.max(BET.min, Math.min(BET.fallbackMax, Math.floor((state.player?.cash || 0) * BET.maxRatio)));
+  // v2.95: 카드 결제 모드면 카드 남은 한도 기준, 아니면 현금 기준
+  const base = (state.payMethod === 'card' && state.card && state.card.enabled) ? (state.card.remaining || 0) : (state.player?.cash || 0);
+  return Math.max(BET.min, Math.min(BET.fallbackMax, Math.floor(base * BET.maxRatio)));
 }
 function getBet() {
   const max = getMaxBet();
   const raw = document.querySelector('#betInput')?.value;
   const bet = clampNumber(raw, BET.min, max);
   if (!Number.isFinite(Number(raw)) || Number(raw) <= 0) { state.notice = '베팅금을 올바르게 입력하세요.'; render(); return 0; }
-  if (bet > state.player.cash) { state.notice = '보유금보다 크게 베팅할 수 없습니다.'; render(); return 0; }
   if (bet < BET.min) { state.notice = `최소 베팅금은 ${formatWon(BET.min)}입니다.`; render(); return 0; }
+  // v2.95: 결제수단별 사전 검증. 카드면 현금 폴백 없이 차단.
+  if (state.payMethod === 'card') {
+    const c = state.card;
+    if (!c || !c.enabled || c.suspended) { state.notice = 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.'; render(); return 0; }
+    if (bet > (c.remaining || 0)) { state.notice = 'STONK Card 한도를 초과했습니다. 결제수단을 바꾸거나 금액을 줄여 주세요.'; render(); return 0; }
+  } else if (bet > state.player.cash) {
+    state.notice = '보유금보다 크게 베팅할 수 없습니다.'; render(); return 0;
+  }
   return bet;
 }
 
@@ -971,12 +980,20 @@ async function settle(game, result, resultText) {
     const profit = Math.trunc(Number(result.profit || 0));
     const bet = Math.trunc(Number(result.bet || document.querySelector('#betInput')?.value || 0));
     const payout = Math.trunc(Number(result.payout || 0));
-    // v2.9: 카드 베팅이면 베팅액을 카드로 결제(현금 미차감)하고 당첨금만 현금 지급. 실패 시 현금 베팅으로 진행.
+    // v2.95: 카드 베팅이면 카드 결제 필수 — 실패 시 게임 중단(현금 폴백 없음, 현금 미차감, 결과 미적용).
     let cardBet = false;
-    if (state.payMethod === 'card' && bet > 0 && state.card && state.card.enabled && !state.card.suspended) {
+    if (state.payMethod === 'card') {
+      const c = state.card;
+      if (!c || !c.enabled || c.suspended) {
+        state.notice = 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.';
+        return; // finally 에서 busy 해제·render
+      }
       const charged = await chargeCard(state.roomCode, state.user.uid, bet, 'Arcade 베팅');
       if (charged > 0) { cardBet = true; state.card.used += charged; state.card.remaining = Math.max(0, state.card.remaining - charged); }
-      else { state.notice = (charged === -2 ? '카드 한도 초과 — 현금으로 진행합니다.' : '카드 사용 불가 — 현금으로 진행합니다.'); }
+      else {
+        state.notice = charged === -2 ? 'STONK Card 한도 초과로 베팅할 수 없습니다. 결제수단을 변경해 주세요.' : 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.';
+        return; // 게임 결과 미적용
+      }
     }
     const cashDelta = cardBet ? payout : profit;
     const nextCash = await applyProfit(state.roomCode, state.user.uid, cashDelta, state.player.cash);
