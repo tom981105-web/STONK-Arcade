@@ -42,7 +42,7 @@ export async function loadCardStatus(roomCode, uid) {
     const snap = await get(ref(db, `rooms/${roomCode}/bank/${uid}/card`));
     const c = snap.val() || {};
     const limit = Math.trunc(Number(c.cardLimit) || 0), used = Math.trunc(Number(c.usedAmount) || 0);
-    return { enabled: !!c.enabled, suspended: !!c.suspended, overdue: !!c.overdue, tier: c.cardTier || "", limit, used, remaining: Math.max(0, limit - used) };
+    return { enabled: !!c.enabled, suspended: !!c.suspended, overdue: !!c.overdue, lost: !!c.lost, tier: c.cardTier || "", displayId: c.cardDisplayId || "", limit, used, remaining: Math.max(0, limit - used) };
   } catch (_) { return null; }
 }
 // v2.9: 카드 결제(usedAmount 누적, 즉시 현금 차감 없음). 반환: 결제액(성공) / -1 정지·미발급 / -2 한도초과 / 0 무효
@@ -53,7 +53,8 @@ export async function chargeCard(roomCode, uid, amount, label) {
     const { db } = getFirebase();
     const now = Date.now();
     const c = (await get(ref(db, `rooms/${roomCode}/bank/${uid}/card`))).val() || {};
-    if (!c.enabled || c.suspended) return -1;
+    if (!c.enabled || c.suspended || c.lost) return -1;
+    if (c.overdue) return -3;
     const limit = Math.trunc(Number(c.cardLimit) || 0), used = Math.trunc(Number(c.usedAmount) || 0);
     if (used + amount > limit) return -2;
     const dueAt = Number(c.dueAt) > 0 ? Number(c.dueAt) : now + 24 * 3600 * 1000;

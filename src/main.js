@@ -261,13 +261,13 @@ function renderBetBar() {
 function cardPayUI() {
   const c = state.card;
   if (!c || !c.enabled) return '';
-  const blocked = c.suspended;
+  const blocked = c.suspended || c.lost;
   const risk = state.bankLoan > 0 && state.payMethod === 'card' ? ' · ⚠️ 대출+카드 주의' : '';
   return `<div class="pay-method">
     <span class="pm-label">결제수단</span>
     <button class="pm-opt ${state.payMethod === 'cash' ? 'on' : ''}" type="button" data-pay="cash">현금</button>
     <button class="pm-opt ${state.payMethod === 'card' ? 'on' : ''} ${blocked ? 'off' : ''}" type="button" data-pay="card" ${blocked ? 'disabled' : ''}>STONK Card</button>
-    <small>${blocked ? '카드 정지' : `사용 ${formatWon(c.used)} · 남은 한도 ${formatWon(c.remaining)}${c.overdue ? ' · ⚠️미납' : ''}`}${risk} · 카드 베팅액은 <b>청구 예정</b> <i>게임머니 신용결제</i></small>
+    <small>${blocked ? (c.lost ? '분실 신고된 카드' : '카드 정지') : `사용 ${formatWon(c.used)} · 남은 한도 ${formatWon(c.remaining)}${c.overdue ? ' · ⚠️미납' : ''}`}${risk} · 카드 베팅액은 <b>청구 예정</b> <i>게임머니 신용결제</i></small>
   </div>`;
 }
 
@@ -965,7 +965,7 @@ function getBet() {
   // v2.95: 결제수단별 사전 검증. 카드면 현금 폴백 없이 차단.
   if (state.payMethod === 'card') {
     const c = state.card;
-    if (!c || !c.enabled || c.suspended) { state.notice = 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.'; render(); return 0; }
+    if (!c || !c.enabled || c.suspended || c.lost) { state.notice = (c && c.lost) ? '분실 신고된 카드입니다. 재발급 후 이용하거나 결제수단을 현금으로 변경해 주세요.' : 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.'; render(); return 0; }
     if (bet > (c.remaining || 0)) { state.notice = 'STONK Card 한도를 초과했습니다. 결제수단을 바꾸거나 금액을 줄여 주세요.'; render(); return 0; }
   } else if (bet > state.player.cash) {
     state.notice = '보유금보다 크게 베팅할 수 없습니다.'; render(); return 0;
@@ -984,8 +984,8 @@ async function settle(game, result, resultText) {
     let cardBet = false;
     if (state.payMethod === 'card') {
       const c = state.card;
-      if (!c || !c.enabled || c.suspended) {
-        state.notice = 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.';
+      if (!c || !c.enabled || c.suspended || c.lost) {
+        state.notice = (c && c.lost) ? '분실 신고된 카드입니다. 재발급 후 이용하거나 결제수단을 현금으로 변경해 주세요.' : 'STONK Card 결제에 실패했습니다. 현금 결제를 원하시면 결제수단을 현금으로 변경한 뒤 다시 시도해 주세요.';
         return; // finally 에서 busy 해제·render
       }
       const charged = await chargeCard(state.roomCode, state.user.uid, bet, 'Arcade 베팅');
